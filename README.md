@@ -30,7 +30,7 @@ DeepSeek 开放平台**只提供余额查询 API，没有用量统计 API**。�
 - **用量构成** —— 分模型的 Tokens / 消费 / 请求次数 / 缓存命中率，逐日趋势图
 - **峰谷计价** —— 当前处于高峰还是空闲（带倒计时）、**反推本月有多少比例落在高峰**、错峰可省多少钱、完整费率表
 - **历史归档** —— 按月本地归档，支持「本月 vs 上月」环比与多月趋势
-- **桌面小组件** —— 9 项数据 + 14 天趋势细条，不打开 App 就能看
+- **桌面小组件** —— 十余项数据 + 14 天趋势细条，不打开 App 就能看
 - **余额预警** —— 后台每 30 分钟联网检查，低于阈值推送通知
 - **CSV 导出** —— 按模型 + 按天两段式，导出到下载目录
 - **凭证安全** —— API Key 与登录 Token 全部用 Android Keystore（AES-256-GCM）加密存储，明文不落盘
@@ -126,7 +126,7 @@ app/src/main/java/com/rikka/dsusage/
 │   ├── Glass.kt             玻璃材质组件 + 动画 + 手绘图标
 │   ├── DashViewModel.kt     状态与请求（Job 取消防并发覆盖）
 │   ├── Tabs1.kt / Tabs2.kt  四个分页
-│   ├── Details.kt           三个下钻详情页
+│   ├── Details.kt           四个下钻详情页（余额/错峰/历史/模型）
 │   └── Charts.kt            趋势图
 └── widget/BalanceWidget.kt  桌面小组件
 
@@ -165,7 +165,7 @@ This app puts that on your phone, plus a home-screen widget.
 - **Peak vs off-peak** — live period indicator with countdown, **inferred peak share**, potential
   savings, and the full rate table
 - **Monthly archive** — locally archived per month, enabling month-over-month comparison
-- **Home-screen widget** — 9 data points plus a 14-day trend strip, no app launch needed
+- **Home-screen widget** — a dozen data points plus a 14-day trend strip, no app launch needed
 - **Low-balance alert** — background check every 30 min, push notification under a threshold
 - **CSV export** — per-model and per-day sections, written to Downloads
 - **Credential safety** — API key and login token are encrypted with Android Keystore
