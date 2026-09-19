@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">DeepSeek 用量</string>
+    <string name="widget_label">DeepSeek 余额</string>
+    <string name="widget_desc">在桌面直接查看 DeepSeek 余额、本月用量与趋势</string>
+    <string name="widget_placeholder">—</string>
+
+    <string name="widget_month_cost">本月消费</string>
+    <string name="widget_requests">请求</string>
+    <string name="widget_cache">命中</string>
+    <string name="widget_status_ok">● 正常</string>
+    <string name="widget_status_bad">● 不可用</string>
+    <string name="widget_no_key">点击填入 API Key</string>
+    <string name="widget_no_usage">尚未获取用量数据</string>
+</resources>
