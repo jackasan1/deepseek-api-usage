@@ -350,7 +350,7 @@ private fun GlassNavBar(current: Int, onSelect: (Int) -> Unit) {
             )
             .clip(shape)
             .background(Brush.verticalGradient(listOf(c.cardTop, c.cardBottom)))
-            .border(1.dp, Brush.linearGradient(c.border), shape)
+            .border(1.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.30f), Color.White.copy(alpha = 0.09f), Color.White.copy(alpha = 0.05f))), shape)
             .padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,

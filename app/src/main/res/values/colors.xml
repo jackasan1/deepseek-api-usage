@@ -2,11 +2,13 @@
 <resources>
     <color name="ic_launcher_background">#4D6BFE</color>
 
-    <!-- 以下色值直接取自设计稿 HTML，勿随意改动 -->
-    <color name="widget_value">#F3F5FF</color>
-    <color name="widget_label">#AFB7DA</color>
-    <color name="widget_foot">#8A93B8</color>
-    <color name="widget_bar">#9DB0FF</color>
-    <color name="widget_ok">#5FE3AE</color>
-    <color name="widget_bad">#FF8A93</color>
+    <!-- 与 App 的冷色 Frost 色板严格一致，勿单独改动 -->
+    <color name="widget_value">#EAF0FF</color>
+    <color name="widget_label">#93A3C7</color>
+    <color name="widget_foot">#5A6B8F</color>
+    <color name="widget_bar">#5B9CFF</color>
+    <color name="widget_bar_hi">#A8C6FF</color>
+    <color name="widget_ok">#2DD4BF</color>
+    <color name="widget_bad">#FF5C8A</color>
+    <color name="widget_warn">#FFB84D</color>
 </resources>

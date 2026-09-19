@@ -178,11 +178,11 @@ fun PeakTab(state: DashState, onNeedLogin: () -> Unit, onOpenPeak: () -> Unit) {
 
         summary?.legacyModels?.takeIf { it.isNotEmpty() }?.let { legacy ->
             Card(
-                colors = CardDefaults.cardColors(containerColor = c.peak.copy(alpha = 0.18f)),
+                colors = CardDefaults.cardColors(containerColor = c.warn.copy(alpha = 0.10f)),
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("⚠ 检测到已下线的旧模型名", style = MaterialTheme.typography.labelLarge, color = c.peak)
+                    Text("⚠ 检测到已下线的旧模型名", style = MaterialTheme.typography.labelLarge, color = c.warn)
                     Text(legacy.joinToString("、"), style = MaterialTheme.typography.bodySmall, color = c.onGlass)
                     Text(
                         "官方已声明这些名字下线，且实测其单价高于 deepseek-flash" +

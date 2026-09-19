@@ -241,6 +241,9 @@ class BalanceWidget : AppWidgetProvider() {
             val canvas = android.graphics.Canvas(bitmap)
             val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
             paint.color = context.getColor(R.color.widget_bar)
+            val hiPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                color = context.getColor(R.color.widget_bar_hi)
+            }
             val rect = RectF()
             val radius = barWidth / 2.6f
 
@@ -249,7 +252,7 @@ class BalanceWidget : AppWidgetProvider() {
                 if (barHeight > 1f) {
                     val left = index * (barWidth + gap)
                     rect.set(left, safeH - barHeight, left + barWidth, safeH.toFloat())
-                    canvas.drawRoundRect(rect, radius, radius, paint)
+                    canvas.drawRoundRect(rect, radius, radius, if (index == series.size - 1) hiPaint else paint)
                 }
             }
             return bitmap

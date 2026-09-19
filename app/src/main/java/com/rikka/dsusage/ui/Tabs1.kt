@@ -23,6 +23,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -44,6 +45,8 @@ import androidx.compose.ui.unit.sp
 import com.rikka.dsusage.data.BalanceInfo
 import com.rikka.dsusage.data.ModelStat
 import com.rikka.dsusage.data.MonthRecord
+import com.rikka.dsusage.data.PeakPricing
+import com.rikka.dsusage.data.RateTier
 import com.rikka.dsusage.data.UsageSnapshot
 import kotlinx.coroutines.delay
 import java.time.LocalDate
@@ -173,103 +176,143 @@ fun OverviewTab(
 ) {
     val c = LocalGlass.current
     val busy = state.balLoading || state.useLoading
+    val snap = state.snap
 
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        GlassCard(Modifier.fillMaxWidth(), cornerRadius = 30.dp, onClick = onOpenBalance) {
-            Text("账户余额", style = MaterialTheme.typography.labelLarge, color = c.onGlassMuted)
+        /* ---------- Hero：余额 + 状态 + 本月三指标 + 迷你趋势 ---------- */
+        GlassCard(Modifier.fillMaxWidth(), glow = true, onClick = onOpenBalance) {
+            Text("账户余额", style = MaterialTheme.typography.labelSmall, color = c.onGlassMuted)
+
             if (state.balLoading && state.info == null) {
-                CircularProgressIndicator(Modifier.size(28.dp), color = c.accent)
+                CircularProgressIndicator(Modifier.size(26.dp), color = c.accent)
             } else {
                 Row(verticalAlignment = Alignment.Bottom) {
                     RollingMoney(
                         target = state.info?.totalBalance?.toDoubleOrNull() ?: 0.0,
                         style = MaterialTheme.typography.displaySmall.copy(
-                            fontSize = 42.sp,
+                            fontSize = 36.sp,
                             fontWeight = FontWeight.Bold,
                         ),
                         color = c.onGlass,
                     )
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(7.dp))
                     Text(
                         state.info?.currency ?: "",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = c.onGlassMuted,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = c.onGlassFaint,
                     )
                 }
-                GlassPill(
-                    text = if (state.available) "账户状态正常" else "余额不可用",
-                    tint = if (state.available) c.offPeak else c.peak,
-                )
-                val bal = state.info?.totalBalance?.toDoubleOrNull()
-                val cost = state.snap?.totalCost ?: 0.0
-                if (bal != null && cost > 0.0 && state.ym == YearMonth.now()) {
-                    val elapsed = LocalDate.now().dayOfMonth.coerceAtLeast(1)
-                    val daily = cost / elapsed
-                    if (daily > 0) {
-                        val left = (bal / daily).toInt()
-                        Text(
-                            "按本月日均 ¥${String.format(Locale.CHINA, "%.2f", daily)} 估算，余额约可用 $left 天",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = if (left <= 7) c.peak else c.onGlassMuted,
-                        )
+
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    GlassPill(
+                        text = if (state.available) "● 账户状态正常" else "● 余额不可用",
+                        tint = if (state.available) c.offPeak else c.peak,
+                    )
+                    val bal = state.info?.totalBalance?.toDoubleOrNull()
+                    val cost = snap?.totalCost ?: 0.0
+                    if (bal != null && cost > 0.0 && state.ym == YearMonth.now()) {
+                        val elapsed = LocalDate.now().dayOfMonth.coerceAtLeast(1)
+                        val daily = cost / elapsed
+                        if (daily > 0) {
+                            val left = (bal / daily).toInt()
+                            Text(
+                                "可用约 $left 天",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (left <= 7) c.peak else c.onGlassMuted,
+                            )
+                        }
                     }
                 }
             }
-            state.balError?.let { Text(it, color = c.peak, style = MaterialTheme.typography.bodySmall) }
-            DetailHint("余额构成与可用天数")
-        }
 
-        FreshnessLine(state)
+            state.balError?.let {
+                Text(it, color = c.peak, style = MaterialTheme.typography.bodySmall)
+            }
 
-        PeakStatusStrip(onOpenPeak)
-
-        GlassCard(Modifier.fillMaxWidth()) {
-            Text("本月概览", style = MaterialTheme.typography.labelLarge, color = c.onGlassMuted)
-            val snap = state.snap
-            if (snap == null) {
+            if (snap != null) {
+                HorizontalDivider(color = Color.White.copy(alpha = 0.10f))
+                StatTriple(
+                    "本月消费" to fmtMoney(snap.totalCost),
+                    "请求" to String.format(Locale.CHINA, "%,d", snap.totalRequests),
+                    "Tokens" to fmtTokens(snap.totalTokens),
+                )
+                val filled = remember(snap) { fillMissingDays(snap.days) }
+                if (filled.size >= 2) {
+                    GlassAreaChart(
+                        values = filled.map { it.cost.toFloat() },
+                        tint = c.accent,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(
+                            filled.first().date.takeLast(5),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = c.onGlassFaint,
+                        )
+                        filled.maxByOrNull { it.cost }?.let {
+                            Text(
+                                "峰值 ${it.date.takeLast(5)} ${fmtMoney(it.cost)}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = c.accent,
+                            )
+                        }
+                        Text(
+                            filled.last().date.takeLast(5),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = c.onGlassFaint,
+                        )
+                    }
+                }
+            } else {
                 Text(
-                    if (state.expired) "登录已失效，请重新获取用量凭证"
-                    else "尚未获取用量数据",
+                    "尚未获取用量数据",
                     style = MaterialTheme.typography.bodySmall,
                     color = c.onGlassMuted,
                 )
-                GlassPrimaryButton(
-                    text = if (state.expired) "重新登录" else "去获取",
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = onNeedLogin,
-                )
-            } else {
-                StatTriple(
-                    "消费金额" to fmtMoney(snap.totalCost),
-                    "请求次数" to String.format(Locale.CHINA, "%,d", snap.totalRequests),
-                    "Tokens" to fmtTokens(snap.totalTokens),
-                )
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        "缓存命中率 ${fmtPct(snap.cacheRatio)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = c.onGlassMuted,
-                    )
-                    GlassProgress(snap.cacheRatio.toFloat(), c.accent, Modifier.fillMaxWidth())
-                }
-            }
-            state.useError?.takeIf { !state.expired }?.let {
-                Text(it, color = c.peak, style = MaterialTheme.typography.bodySmall)
+                GlassPrimaryButton("去获取", Modifier.fillMaxWidth(), onClick = onNeedLogin)
             }
         }
 
-        GlassCard(Modifier.fillMaxWidth()) {
-            Text("余额构成", style = MaterialTheme.typography.labelLarge, color = c.onGlassMuted)
-            listOf(
-                "充值余额" to (state.info?.toppedUpBalance ?: "--"),
-                "赠送余额" to (state.info?.grantedBalance ?: "--"),
-            ).forEach { (label, v) ->
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(label, style = MaterialTheme.typography.bodyMedium, color = c.onGlassMuted)
-                    Text("¥$v", style = MaterialTheme.typography.bodyMedium, color = c.onGlass, fontWeight = FontWeight.SemiBold)
+        FreshnessLine(state)
+        PeakStatusStrip(onOpenPeak)
+
+        /* ---------- 环比 ---------- */
+        val hist = state.history
+        val cur = hist.firstOrNull { it.month == state.ym.toString() }
+        val prev = hist.firstOrNull { it.month == state.ym.minusMonths(1).toString() }
+        if (cur != null && prev != null && prev.cost > 0.0) {
+            val delta = cur.cost - prev.cost
+            GlassCard(Modifier.fillMaxWidth()) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column {
+                        Text(
+                            "环比 ${prev.month}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = c.onGlassMuted,
+                        )
+                        Text(
+                            "${fmtMoney(prev.cost)} → ${fmtMoney(cur.cost)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = c.onGlassFaint,
+                        )
+                    }
+                    Text(
+                        (if (delta >= 0) "▲ " else "▼ ") + fmtPct(abs(delta / prev.cost)),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = if (delta >= 0) c.peak else c.offPeak,
+                        fontWeight = FontWeight.Bold,
+                    )
                 }
             }
         }
@@ -279,13 +322,8 @@ fun OverviewTab(
                 text = if (busy) "刷新中…" else "刷新",
                 modifier = Modifier.weight(1f),
                 enabled = !busy,
-                onClick = onRefresh,
-            )
-            GlassGhostButton(
-                modifier = Modifier.weight(1f),
-                text = "去充值",
-            onClick = onTopUp,
-            )
+            ) { onRefresh() }
+            GlassGhostButton("去充值", Modifier.weight(1f)) { onTopUp() }
         }
         Spacer(Modifier.height(8.dp))
     }
@@ -306,8 +344,9 @@ fun UsageTab(
 
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        /* ---------- 月份切换 ---------- */
         GlassCard(Modifier.fillMaxWidth(), contentPadding = 10.dp) {
             Row(
                 Modifier.fillMaxWidth(),
@@ -319,7 +358,7 @@ fun UsageTab(
                 }
                 Text(
                     "${ym.year} 年 ${ym.monthValue} 月",
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = c.onGlass,
                 )
@@ -327,19 +366,18 @@ fun UsageTab(
                     onClick = { onMonthChange(ym.plusMonths(1)) },
                     enabled = ym < YearMonth.now(),
                 ) {
-                    Text("下月 ›", color = if (ym < YearMonth.now()) c.accent else c.onGlassMuted)
+                    Text("下月 ›", color = if (ym < YearMonth.now()) c.accent else c.onGlassFaint)
                 }
             }
         }
 
-        HistoryTrendCard(state) { onOpenHistory() }
-
         when {
             state.useLoading && snap == null -> GlassCard(Modifier.fillMaxWidth()) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                    CircularProgressIndicator(Modifier.size(26.dp), color = c.accent)
+                    CircularProgressIndicator(Modifier.size(24.dp), color = c.accent)
                 }
             }
+
             snap == null -> GlassCard(Modifier.fillMaxWidth()) {
                 Text(
                     if (state.expired) "登录已失效" else "该月没有可用数据",
@@ -347,63 +385,110 @@ fun UsageTab(
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
+
             else -> {
+                /* ---------- 命中率环形 + 汇总 ---------- */
                 GlassCard(Modifier.fillMaxWidth()) {
-                    Text("本月汇总", style = MaterialTheme.typography.labelLarge, color = c.onGlassMuted)
+                    val hit = snap.models.sumOf { it.cacheHit }
+                    val miss = snap.models.sumOf { it.cacheMiss }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        GlassRing(progress = snap.cacheRatio.toFloat(), tint = c.offPeak)
+                        Spacer(Modifier.width(14.dp))
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(
+                                "缓存命中率",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = c.onGlassMuted,
+                            )
+                            Row(verticalAlignment = Alignment.Bottom) {
+                                Text(
+                                    String.format(Locale.CHINA, "%.0f", snap.cacheRatio * 100),
+                                    fontSize = 25.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = c.onGlass,
+                                )
+                                Text(
+                                    "%",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = c.onGlass,
+                                    modifier = Modifier.padding(bottom = 2.dp),
+                                )
+                            }
+                            Text(
+                                "命中 ${fmtTokens(hit)} / 未命中 ${fmtTokens(miss)}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = c.onGlassFaint,
+                            )
+                        }
+                    }
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.10f))
                     StatTriple(
-                        "消费金额" to fmtMoney(snap.totalCost),
-                        "请求次数" to String.format(Locale.CHINA, "%,d", snap.totalRequests),
+                        "消费" to fmtMoney(snap.totalCost),
+                        "请求" to String.format(Locale.CHINA, "%,d", snap.totalRequests),
                         "Tokens" to fmtTokens(snap.totalTokens),
                     )
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(
-                            "缓存命中率 ${fmtPct(snap.cacheRatio)}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = c.onGlassMuted,
-                        )
-                        GlassProgress(snap.cacheRatio.toFloat(), c.offPeak, Modifier.fillMaxWidth())
-                    }
                 }
 
+                /* ---------- 每日消费趋势 ---------- */
                 GlassCard(Modifier.fillMaxWidth()) {
-                    Text("每日 Token 趋势", style = MaterialTheme.typography.labelLarge, color = c.onGlassMuted)
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Bottom,
+                    ) {
+                        Text("每日消费趋势", style = MaterialTheme.typography.labelSmall, color = c.onGlassMuted)
+                        Text(
+                            "近 ${snap.days.size} 天",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = c.onGlassFaint,
+                        )
+                    }
                     val filled = remember(snap) { fillMissingDays(snap.days) }
-                    if (filled.isEmpty()) {
-                        Text("暂无逐日数据", color = c.onGlassMuted, style = MaterialTheme.typography.bodySmall)
-                    } else {
-                        val mid = filled[filled.size / 2].date.takeLast(5)
+                    if (filled.size >= 2) {
                         GlassBarChart(
-                            values = filled.map { it.tokens.toFloat() },
+                            values = filled.map { it.cost.toFloat() },
                             startLabel = filled.first().date.takeLast(5),
-                            midLabel = mid,
+                            midLabel = filled[filled.size / 2].date.takeLast(5),
                             endLabel = filled.last().date.takeLast(5),
                             barColor = c.accent,
+                            highlightColor = c.accentHi,
                             modifier = Modifier.fillMaxWidth(),
                         )
-                        val peakDay = filled.maxByOrNull { it.tokens }
-                        if (peakDay != null && peakDay.tokens > 0) {
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.10f))
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            val lastActive = filled.lastOrNull { it.tokens > 0 }
                             Text(
-                                "峰值 ${fmtTokens(peakDay.tokens)} · ${peakDay.date}",
-                                style = MaterialTheme.typography.bodySmall,
+                                lastActive?.let { "最新 ${it.date.takeLast(5)} · ${fmtMoney(it.cost)}" } ?: "—",
+                                style = MaterialTheme.typography.labelSmall,
                                 color = c.onGlassMuted,
                             )
+                            filled.maxByOrNull { it.cost }?.let {
+                                Text(
+                                    "峰值 ${it.date.takeLast(5)} · ${fmtMoney(it.cost)}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = c.accent,
+                                )
+                            }
                         }
-                        val lastActive = filled.lastOrNull { it.tokens > 0 }
-                        if (lastActive != null) {
-                            Text(
-                                "最新一日 ${lastActive.date}：${fmtTokens(lastActive.tokens)} tokens，${fmtMoney(lastActive.cost)}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = c.onGlassMuted,
-                            )
-                        }
+                    } else {
+                        Text("暂无逐日数据", color = c.onGlassMuted, style = MaterialTheme.typography.bodySmall)
                     }
                 }
 
+                HistoryTrendCard(state) { onOpenHistory() }
+
+                /* ---------- 分模型 ---------- */
                 GlassCard(Modifier.fillMaxWidth()) {
-                    Text("分模型明细", style = MaterialTheme.typography.labelLarge, color = c.onGlassMuted)
-                    snap.models.filter { it.tokens > 0 || it.cost > 0 }.forEach { m ->
-                        ModelRow(m) { onOpenModel(m.model) }
-                    }
+                    Text("分模型", style = MaterialTheme.typography.labelSmall, color = c.onGlassMuted)
+                    snap.models
+                        .filter { it.tokens > 0 || it.cost > 0 }
+                        .forEach { m ->
+                            ModelRow(m, snap.totalCost) { onOpenModel(m.model) }
+                        }
                 }
             }
         }
@@ -412,31 +497,46 @@ fun UsageTab(
 }
 
 @Composable
-private fun ModelRow(m: ModelStat, onClick: () -> Unit) {
+private fun ModelRow(m: ModelStat, totalCost: Double, onClick: () -> Unit) {
     val c = LocalGlass.current
+    val share = if (totalCost > 0.0) (m.cost / totalCost).toFloat() else 0f
+    val tint = if (PeakPricing.tierOf(m.model) == RateTier.PRO) c.offPeak else c.accent
+
     Column(
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
-            .padding(vertical = 6.dp)
+            .padding(vertical = 7.dp),
+        verticalArrangement = Arrangement.spacedBy(5.dp),
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(m.model, style = MaterialTheme.typography.bodyMedium, color = c.onGlass, fontWeight = FontWeight.Medium)
-            Text(fmtMoney(m.cost), style = MaterialTheme.typography.bodyMedium, color = c.onGlass)
+            Text(
+                m.model,
+                style = MaterialTheme.typography.bodyMedium,
+                color = c.onGlass,
+                fontWeight = FontWeight.Medium,
+            )
+            Text(
+                fmtMoney(m.cost),
+                style = MaterialTheme.typography.bodyMedium,
+                color = c.onGlass,
+                fontWeight = FontWeight.SemiBold,
+            )
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(
                 "${fmtTokens(m.tokens)} · ${String.format(Locale.CHINA, "%,d", m.requests)} 次",
-                style = MaterialTheme.typography.bodySmall,
-                color = c.onGlassMuted,
+                style = MaterialTheme.typography.labelSmall,
+                color = c.onGlassFaint,
             )
             Text(
                 "命中 ${fmtPct(m.cacheRatio)}",
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.labelSmall,
                 color = c.onGlassMuted,
             )
         }
+        GlassProgress(share, tint, Modifier.fillMaxWidth())
     }
 }
 

@@ -1,12 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android"
-    android:shape="rectangle">
-    <corners android:radius="26dp" />
-    <gradient
-        android:angle="270"
-        android:endColor="#0EFFFFFF"
-        android:startColor="#2BFFFFFF" />
-    <stroke
-        android:width="1dp"
-        android:color="#33FFFFFF" />
-</shape>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 一层极浅的暗底：保证浅色壁纸上近白文字仍然可读 -->
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="20dp" />
+            <solid android:color="#33000000" />
+        </shape>
+    </item>
+    <!-- 玻璃本体：白渐变 + 均匀描边 -->
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="20dp" />
+            <gradient
+                android:angle="270"
+                android:endColor="#0AFFFFFF"
+                android:startColor="#1FFFFFFF" />
+            <stroke
+                android:width="1dp"
+                android:color="#26FFFFFF" />
+        </shape>
+    </item>
+</layer-list>
