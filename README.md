@@ -3,11 +3,15 @@
 > 一个 Android 上的 DeepSeek API 用量看板 · 液态玻璃界面 · 支持峰谷计价反推
 > An Android dashboard for DeepSeek API usage — liquid-glass UI, peak/off-peak price inference.
 
-<!-- 截图放这里（建议放到 docs/screenshots/ 后取消注释）
-| 概览 | 用量 | 错峰 | 桌面小组件 |
-|---|---|---|---|
-| ![](docs/screenshots/overview.png) | ![](docs/screenshots/usage.png) | ![](docs/screenshots/peak.png) | ![](docs/screenshots/widget.png) |
--->
+<p align="center">
+  <img src="docs/screenshots/overview.jpg" width="24%" alt="概览" />
+  <img src="docs/screenshots/usage.jpg" width="24%" alt="用量" />
+  <img src="docs/screenshots/peak.jpg" width="24%" alt="错峰" />
+  <img src="docs/screenshots/peak-detail.jpg" width="24%" alt="错峰详情" />
+</p>
+<p align="center">
+  <img src="docs/screenshots/widget.jpg" width="76%" alt="桌面小组件" />
+</p>
 
 ---
 
